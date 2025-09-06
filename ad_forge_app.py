@@ -1,10 +1,11 @@
-from PIL import Image
-if not hasattr(Image, "ANTIALIAS"):
-    Image.ANTIALIAS = Image.Resampling.LANCZOS
+
 import streamlit as st
 from moviepy.editor import VideoFileClip, TextClip, CompositeVideoClip
 from pathlib import Path
 import tempfile
+from PIL import Image
+if not hasattr(Image, "ANTIALIAS"):
+    Image.ANTIALIAS = Image.Resampling.LANCZOS
 
 st.set_page_config(page_title="PRIMUS Ad Forge", layout="centered")
 st.title("🎬 PRIMUS Ad Forge — Real Ad Generator")
