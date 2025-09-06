@@ -1,4 +1,6 @@
-
+from PIL import Image
+if not hasattr(Image, "ANTIALIAS"):
+    Image.ANTIALIAS = Image.Resampling.LANCZOS
 import streamlit as st
 from moviepy.editor import VideoFileClip, TextClip, CompositeVideoClip
 from pathlib import Path
