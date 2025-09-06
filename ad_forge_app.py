@@ -1,37 +1,59 @@
 
 import streamlit as st
+from moviepy.editor import VideoFileClip, TextClip, CompositeVideoClip
 from pathlib import Path
+import tempfile
 
 st.set_page_config(page_title="PRIMUS Ad Forge", layout="centered")
+st.title("🎬 PRIMUS Ad Forge — Real Ad Generator")
 
-st.title("🎬 PRIMUS Ad Forge — Ad Simulation")
+input_file = st.file_uploader("Upload your video", type=["mp4", "mov"])
+hook = st.text_input("Hook Text", "This cleared my skin in 7 days")
+cta = st.text_input("Call to Action", "Tap to try it now")
+brand = st.text_input("Watermark (optional)", "")
 
-input_path = st.text_input("Input file path (e.g. ./sample.mp4)")
-hook = st.text_area("Hook (e.g. This cleared my skin in 7 days)")
-cta = st.text_area("Call to Action (e.g. Tap to try it now)")
-brand = st.text_input("Brand watermark (optional)")
+platform = st.selectbox("Select Platform", ["tiktok", "instagram", "facebook"])
+start_btn = st.button("Generate Video")
 
-platforms = []
-cols = st.columns(3)
-with cols[0]:
-    if st.toggle("tiktok", value=True):
-        platforms.append("tiktok")
-with cols[1]:
-    if st.toggle("instagram"):
-        platforms.append("instagram")
-with cols[2]:
-    if st.toggle("facebook"):
-        platforms.append("facebook")
+platform_sizes = {
+    "tiktok": (1080, 1920),
+    "instagram": (1080, 1920),
+    "facebook": (1080, 1080),
+}
 
-if st.button("Simulate Ad Creation"):
-    if not input_path or not hook or not cta:
-        st.warning("Please fill in all required fields.")
-    else:
-        st.success("✅ Simulation started")
-        for p in platforms:
-            st.markdown(f"**Simulating for {p.upper()}...**")
-            st.text(f"  Hook: {hook}")
-            st.text(f"  CTA: {cta}")
-            st.text(f"  Brand: {brand or '[none]'}")
-            st.text(f"  Output: {Path(input_path).stem}_{p}.mp4")
-            st.markdown("---")
+def process_video(uploaded, hook_text, cta_text, brand_text, platform):
+    temp_dir = tempfile.mkdtemp()
+    input_path = Path(temp_dir) / "input.mp4"
+    with open(input_path, "wb") as f:
+        f.write(uploaded.read())
+
+    clip = VideoFileClip(str(input_path)).subclip(0, min(10, uploaded.size))  # max 10 sec
+    clip = clip.resize(height=platform_sizes[platform][1])
+
+    W, H = clip.size
+    txt_clips = []
+
+    if hook_text:
+        txt_clips.append(TextClip(hook_text, fontsize=60, color='white', bg_color='black', size=(W, None))
+                         .set_position(("center", 50)).set_duration(clip.duration))
+
+    if cta_text:
+        txt_clips.append(TextClip(cta_text, fontsize=50, color='white', bg_color='black', size=(W, None))
+                         .set_position(("center", H - 120)).set_duration(clip.duration))
+
+    if brand_text:
+        txt_clips.append(TextClip(brand_text, fontsize=40, color='gray', bg_color=None)
+                         .set_position(("right", "bottom")).set_duration(clip.duration))
+
+    final = CompositeVideoClip([clip] + txt_clips)
+    output_path = Path(temp_dir) / f"output_{platform}.mp4"
+    final.write_videofile(str(output_path), codec='libx264', audio_codec='aac')
+
+    return output_path
+
+if start_btn and input_file:
+    with st.spinner("Processing..."):
+        out = process_video(input_file, hook, cta, brand, platform)
+        st.video(str(out))
+        with open(out, "rb") as f:
+            st.download_button("Download Video", f, file_name=out.name)
